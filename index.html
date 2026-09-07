@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MLA Citation Builder</title>
+<meta name="description" content="Fill in a source, get a copyable MLA citation. Build a full Works Cited / Works Consulted page.">
+<style>
+  :root{
+    --bg:#f6f7f9; --card:#fff; --ink:#15181d; --muted:#5f6875; --line:#e2e5ea;
+    --accent:#2f5eff; --accent-ink:#fff; --ok:#0a7c4a; --danger:#c0392b;
+    --radius:10px;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{--bg:#111317;--card:#181b21;--ink:#e9ecf1;--muted:#9aa3b0;--line:#2a2f38;--accent:#5b83ff;--ok:#3ecf8e;--danger:#ff6b5e}
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+       font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+       -webkit-text-size-adjust:100%}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+  header h1{font-size:1.45rem;margin:0 0 4px}
+  header p{margin:0 0 18px;color:var(--muted);font-size:.9rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+        padding:16px;margin-bottom:16px}
+  .card h2{font-size:1rem;margin:0 0 12px;letter-spacing:.01em}
+  label{display:block;font-size:.78rem;font-weight:600;color:var(--muted);
+        text-transform:uppercase;letter-spacing:.04em;margin-bottom:4px}
+  input,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:7px;
+        background:var(--bg);color:var(--ink);font:inherit;font-size:.92rem}
+  input:focus,select:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+  .grid{display:grid;gap:10px 12px;grid-template-columns:1fr}
+  @media (min-width:620px){.grid{grid-template-columns:1fr 1fr}.grid .full{grid-column:1/-1}}
+  .field{min-width:0}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .row.end{justify-content:flex-end}
+  button{font:inherit;font-size:.88rem;padding:8px 13px;border-radius:7px;cursor:pointer;
+         border:1px solid var(--line);background:var(--card);color:var(--ink)}
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+  button.link{border:0;background:none;color:var(--muted);padding:4px 6px;font-size:.82rem}
+  button.link:hover{color:var(--accent)}
+  button.link.del:hover{color:var(--danger)}
+  .out{border:1px dashed var(--line);border-radius:8px;padding:12px;margin-top:14px;
+       font-family:"Times New Roman",Times,Georgia,serif;font-size:1rem;word-wrap:break-word}
+  .out .cite{padding-left:2em;text-indent:-2em}
+  .muted{color:var(--muted)}
+  .intext{margin-top:8px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted)}
+  .intext code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
+  ul.sources{list-style:none;margin:0;padding:0}
+  ul.sources li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+  ul.sources li:first-child{border-top:0}
+  ul.sources input[type=checkbox]{width:17px;height:17px;margin-top:3px;flex:none;accent-color:var(--accent)}
+  .s-body{flex:1;min-width:0}
+  .s-cite{font-family:"Times New Roman",Times,serif;font-size:.98rem;word-wrap:break-word}
+  .s-type{font-size:.72rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin-bottom:2px}
+  .s-acts{display:flex;gap:2px;flex:none}
+  .empty{color:var(--muted);font-size:.9rem;padding:6px 0}
+  .works{font-family:"Times New Roman",Times,serif;font-size:1rem;line-height:2}
+  .works h3{text-align:center;font-weight:400;font-size:1rem;margin:0 0 0}
+  .works p{margin:0;padding-left:2em;text-indent:-2em}
+  .bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+  .count{font-size:.82rem;color:var(--muted)}
+  footer{color:var(--muted);font-size:.8rem;text-align:center;margin-top:26px}
+  em{font-style:italic}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>MLA Citation Builder</h1>
+  <p>Pick a source type, fill in what you have (blank fields are skipped), and copy the citation.</p>
+</header>
+
+<section class="card">
+  <h2>1. Build a source</h2>
+  <div class="field full" style="margin-bottom:12px">
+    <label for="type">Source type</label>
+    <select id="type"></select>
+  </div>
+  <div class="grid" id="fields"></div>
+  <div class="row end" style="margin-top:14px">
+    <button class="link" id="clear">Clear fields</button>
+    <button id="copyOne">Copy citation</button>
+    <button class="primary" id="save">Add to list</button>
+  </div>
+  <div class="out" id="preview"><span class="muted">Your citation will appear here.</span></div>
+  <div class="intext" id="intext"></div>
+</section>
+
+<section class="card">
+  <div class="bar">
+    <h2 style="margin:0">2. Your sources <span class="count" id="count"></span></h2>
+    <div class="row">
+      <label style="display:flex;gap:6px;align-items:center;text-transform:none;letter-spacing:0;font-size:.85rem;margin:0;color:var(--ink);font-weight:500;cursor:pointer">
+        <input type="checkbox" id="all" style="width:16px;height:16px;accent-color:var(--accent)"> Select all
+      </label>
+      <button class="link del" id="delSel">Delete selected</button>
+    </div>
+  </div>
+  <ul class="sources" id="list"></ul>
+  <p class="empty" id="listEmpty">No sources yet. Add one above.</p>
+</section>
+
+<section class="card">
+  <div class="bar">
+    <h2 style="margin:0">3. Combined page</h2>
+    <div class="row">
+      <select id="heading" style="width:auto">
+        <option>Works Cited</option>
+        <option>Works Consulted</option>
+      </select>
+      <button id="copyAll">Copy formatted</button>
+      <button id="copyPlain">Copy plain text</button>
+    </div>
+  </div>
+  <div class="works" id="works"><p class="empty" style="padding:0;text-indent:0">Select sources above to build the page.</p></div>
+  <p class="muted" style="font-size:.8rem;margin:12px 0 0">Alphabetical, hanging indent, double spaced. "Copy formatted" keeps the italics and indenting when you paste into Docs or Word.</p>
+</section>
+
+<footer>Formulas from the MLA Cheat Sheet. Nothing leaves your browser &mdash; sources are saved locally.</footer>
+</div>
+
+<script>
+"use strict";
+var MONTHS=["January","February","March","April","May","June","July","August","September","October","November","December"];
+function todayStr(){var d=new Date();return d.getDate()+" "+MONTHS[d.getMonth()]+" "+d.getFullYear();}
+
+/* ---------- field definitions ---------- */
+var F={
+  last:{l:"Author last name",p:"Dean"},
+  first:{l:"Author first name",p:"Cornelia"},
+  last2:{l:"Second author last name",p:"Jones"},
+  first2:{l:"Second author first name",p:"Maria"},
+  bookTitle:{l:"Title of book",p:"The Sixth Extinction",full:1},
+  collection:{l:"Title of collection",p:"The Best American Essays 2020",full:1},
+  essay:{l:"Title of essay",p:"On Being Ill",full:1},
+  article:{l:"Title of article",p:"Executive on a Mission: Saving the Planet",full:1},
+  video:{l:"Title of the film or video",p:"The Water Cycle Explained",full:1},
+  creator:{l:"Creator / channel name",p:"CrashCourse"},
+  editors:{l:"Editor's name(s)",p:"André Aciman"},
+  publication:{l:"Title of publication",p:"The New York Times"},
+  journal:{l:"Title of journal",p:"International Journal of Sustainable Development"},
+  website:{l:"Website title",p:"Rogerebert.com"},
+  publisher:{l:"Publisher",p:"Sun-Times News Group"},
+  city:{l:"City of publication",p:"New York"},
+  year:{l:"Publication year",p:"2006"},
+  volume:{l:"Volume",p:"14"},
+  issue:{l:"Issue",p:"1"},
+  pages:{l:"Pages",p:"27-36"},
+  pagerange:{l:"Page range of entry",p:"pp. 41-58"},
+  date:{l:"Publication date",p:"22 May 2007"},
+  url:{l:"URL",p:"https://www.example.com/article",full:1,type:"url"},
+  accessed:{l:"Access date",p:"25 May 2009",today:1}
+};
+
+/* ---------- helpers ---------- */
+function T(t,o){o=o||{};return{t:(t||"").trim(),i:o.i,q:o.q,sep:o.sep||". "};}
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function name(v){
+  var l=(v.last||"").trim(), f=(v.first||"").trim();
+  if(l&&f) return l+", "+f;
+  return l||f||"";
+}
+function names2(v){
+  var a=name(v), l=(v.last2||"").trim(), f=(v.first2||"").trim();
+  var b=[f,l].filter(Boolean).join(" ");
+  if(a&&b) return a+", and "+b;
+  return a||b||"";
+}
+function render(chunks,html){
+  var parts=chunks.filter(function(c){return c.t;});
+  return parts.map(function(c,i){
+    var last=i===parts.length-1;
+    var sep=last?".":c.sep;
+    var punct=sep.replace(/\s+$/,""), tail=sep.slice(punct.length);
+    var txt=html?esc(c.t):c.t;
+    if(punct==="."&&/[.!?]$/.test(c.t)) punct="";
+    var body=(c.i&&html)?"<em>"+txt+"</em>":txt;
+    return c.q ? "“"+body+punct+"”"+tail : body+punct+tail;
+  }).join("").trim();
+}
+
+/* ---------- source types (MLA Cheat Sheet formulas) ---------- */
+var TYPES=[
+ {id:"book1",label:"Book with 1 author",kind:"book",
+  fields:["last","first","bookTitle","city","publisher","year"],
+  build:function(v){return[T(name(v)),T(v.bookTitle,{i:1}),T(v.city,{sep:", "}),T(v.publisher,{sep:", "}),T(v.year)];}},
+
+ {id:"book2",label:"Book with 2 authors",kind:"book2",
+  fields:["last","first","last2","first2","bookTitle","city","publisher","year"],
+  build:function(v){return[T(names2(v)),T(v.bookTitle,{i:1}),T(v.city,{sep:", "}),T(v.publisher,{sep:", "}),T(v.year)];}},
+
+ {id:"anthology",label:"Anthology / collection",kind:"book",
+  fields:["last","first","collection","publisher","year"],
+  build:function(v){var n=name(v);return[T(n?n+", editor":""),T(v.collection,{i:1}),T(v.publisher,{sep:", "}),T(v.year)];}},
+
+ {id:"work",label:"One work within an anthology",kind:"book",
+  fields:["last","first","essay","collection","editors","publisher","year","pagerange"],
+  build:function(v){return[T(name(v)),T(v.essay,{q:1}),T(v.collection,{i:1,sep:", "}),
+    T(v.editors?"edited by "+v.editors:"",{sep:", "}),T(v.publisher,{sep:", "}),T(v.year,{sep:", "}),T(v.pagerange)];}},
+
+ {id:"print",label:"Print magazine / newspaper article",kind:"print",
+  fields:["last","first","article","publication","date","pages"],
+  build:function(v){return[T(name(v)),T(v.article,{q:1}),T(v.publication,{i:1,sep:", "}),T(v.date,{sep:", "}),T(v.pages)];}},
+
+ {id:"journal",label:"Article in a scholarly journal",kind:"print",
+  fields:["last","first","article","journal","volume","issue","year","pages"],
+  build:function(v){return[T(name(v)),T(v.article,{q:1}),T(v.journal,{i:1,sep:", "}),
+    T(v.volume,{sep:", "}),T(v.issue,{sep:", "}),T(v.year,{sep:", "}),T(v.pages)];}},
+
+ {id:"webpage",label:"Page on a website",kind:"web",
+  fields:["last","first","article","website","url","accessed"],
+  build:function(v){return[T(name(v)),T(v.article,{q:1}),T(v.website,{i:1,sep:", "}),
+    T(v.url),T(v.accessed?"Accessed "+v.accessed:"")];}},
+
+ {id:"webarticle",label:"Article on a website",kind:"web",
+  fields:["last","first","article","website","publisher","date","url","accessed"],
+  build:function(v){return[T(name(v)),T(v.article,{q:1}),T(v.website,{i:1,sep:", "}),
+    T(v.publisher,{sep:", "}),T(v.date,{sep:", "}),T(v.url),T(v.accessed?"Accessed "+v.accessed:"")];}},
+
+ {id:"youtube",label:"YouTube video",kind:"web",
+  fields:["creator","video","date","url"],
+  build:function(v){return[T(v.creator),T(v.video,{q:1}),T("YouTube",{i:1,sep:", "}),T(v.date,{sep:", "}),T(v.url)];}}
+];
+function typeOf(id){for(var i=0;i<TYPES.length;i++) if(TYPES[i].id===id) return TYPES[i];return TYPES[0];}
+
+function citation(src,html){
+  var t=typeOf(src.type);
+  var s=render(t.build(src.values),html);
+  return s;
+}
+/* Parenthetical citation patterns from the cheat sheet */
+function intext(src,num){
+  var t=typeOf(src.type), v=src.values, n=num||"";
+  var title=v.article||v.essay||v.video||v.bookTitle||v.collection||"";
+  var l=(v.last||"").trim()||(v.creator||"").trim();
+  if(t.kind==="web") return l?"("+l+")":(title?"(“"+title+"”)":"");
+  if(t.kind==="print"){var p=n?" para "+n:" para #";return l?"("+l+p+")":(title?"(“"+title+"”"+p+")":"");}
+  var pg=n?" "+n:" #";
+  if(t.kind==="book2"){
+    var l2=(v.last2||"").trim();
+    if(l&&l2) return "("+l+" and "+l2+pg+")";
+  }
+  return l?"("+l+pg+")":(title?"(“"+title+"”"+pg+")":"");
+}
+function sortKey(src){
+  return citation(src,false).toLowerCase()
+    .replace(/[“”"'.,]/g,"")
+    .replace(/^(a|an|the)\s+/,"").trim();
+}
+
+/* ---------- state ---------- */
+var KEY="mla-sources-v1";
+var sources=[];
+try{sources=JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){sources=[];}
+if(!Array.isArray(sources)) sources=[];
+var editing=null;
+var $=function(id){return document.getElementById(id);};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(sources));}catch(e){}}
+
+/* ---------- form ---------- */
+var sel=$("type");
+TYPES.forEach(function(t){var o=document.createElement("option");o.value=t.id;o.textContent=t.label;sel.appendChild(o);});
+
+function drawFields(values){
+  var t=typeOf(sel.value), box=$("fields");
+  box.innerHTML="";
+  t.fields.forEach(function(k){
+    var d=F[k], wrap=document.createElement("div");
+    wrap.className="field"+(d.full?" full":"");
+    var id="f_"+k;
+    var lab=document.createElement("label");lab.setAttribute("for",id);lab.textContent=d.l;
+    var inp=document.createElement("input");
+    inp.id=id;inp.dataset.k=k;inp.type=d.type||"text";inp.placeholder=d.p;inp.autocomplete="off";
+    inp.value=(values&&values[k])||"";
+    inp.addEventListener("input",draw);
+    wrap.appendChild(lab);
+    if(d.today){
+      var row=document.createElement("div");row.className="row";row.style.flexWrap="nowrap";
+      var b=document.createElement("button");b.type="button";b.textContent="Today";b.style.flex="none";
+      b.addEventListener("click",function(){inp.value=todayStr();draw();});
+      row.appendChild(inp);row.appendChild(b);wrap.appendChild(row);
+    } else wrap.appendChild(inp);
+    box.appendChild(wrap);
+  });
+  draw();
+}
+function values(){
+  var v={};
+  Array.prototype.forEach.call($("fields").querySelectorAll("input"),function(i){
+    if(i.value.trim()) v[i.dataset.k]=i.value.trim();
+  });
+  return v;
+}
+function current(){return{type:sel.value,values:values()};}
+function isEmpty(v){return Object.keys(v).length===0;}
+
+function draw(){
+  var src=current();
+  var pv=$("preview");
+  if(isEmpty(src.values)){
+    pv.innerHTML='<span class="muted">Your citation will appear here.</span>';
+    $("intext").innerHTML="";
+  }else{
+    pv.innerHTML='<div class="cite">'+citation(src,true)+'</div>';
+    var it=intext(src);
+    $("intext").innerHTML=it?"In-text citation: <code>"+esc(it)+"</code> <span>(replace # with the page or paragraph number)</span>":"";
+  }
+  $("save").textContent=editing?"Save changes":"Add to list";
+}
+sel.addEventListener("change",function(){drawFields(null);});
+
+$("clear").addEventListener("click",function(){editing=null;drawFields(null);});
+$("save").addEventListener("click",function(){
+  var src=current();
+  if(isEmpty(src.values)){alert("Fill in at least one field first.");return;}
+  if(editing){
+    for(var i=0;i<sources.length;i++) if(sources[i].id===editing){sources[i].type=src.type;sources[i].values=src.values;}
+    editing=null;
+  }else{
+    src.id=String(Date.now())+Math.random().toString(16).slice(2,6);
+    src.sel=true;
+    sources.push(src);
+  }
+  save();drawFields(null);drawList();
+});
+$("copyOne").addEventListener("click",function(){
+  var src=current();
+  if(isEmpty(src.values)){alert("Fill in at least one field first.");return;}
+  copy(citation(src,true),citation(src,false),this);
+});
+
+/* ---------- list ---------- */
+function drawList(){
+  var ul=$("list");ul.innerHTML="";
+  $("listEmpty").style.display=sources.length?"none":"block";
+  $("count").textContent=sources.length?"("+sources.length+")":"";
+  sources.forEach(function(s){
+    var li=document.createElement("li");
+    var cb=document.createElement("input");cb.type="checkbox";cb.checked=!!s.sel;
+    cb.setAttribute("aria-label","Include in combined page");
+    cb.addEventListener("change",function(){s.sel=cb.checked;save();drawWorks();syncAll();});
+    var body=document.createElement("div");body.className="s-body";
+    body.innerHTML='<div class="s-type">'+esc(typeOf(s.type).label)+'</div><div class="s-cite">'+citation(s,true)+'</div>';
+    var acts=document.createElement("div");acts.className="s-acts";
+    var ed=document.createElement("button");ed.className="link";ed.textContent="Edit";
+    ed.addEventListener("click",function(){
+      editing=s.id;sel.value=s.type;drawFields(s.values);
+      window.scrollTo({top:0,behavior:"smooth"});
+    });
+    var del=document.createElement("button");del.className="link del";del.textContent="Delete";
+    del.addEventListener("click",function(){
+      sources=sources.filter(function(x){return x.id!==s.id;});
+      if(editing===s.id){editing=null;drawFields(null);}
+      save();drawList();
+    });
+    acts.appendChild(ed);acts.appendChild(del);
+    li.appendChild(cb);li.appendChild(body);li.appendChild(acts);
+    ul.appendChild(li);
+  });
+  syncAll();drawWorks();
+}
+function syncAll(){
+  var box=$("all"), n=sources.length, k=sources.filter(function(s){return s.sel;}).length;
+  box.checked=n>0&&k===n;
+  box.indeterminate=k>0&&k<n;
+}
+$("all").addEventListener("change",function(){
+  var on=this.checked;
+  sources.forEach(function(s){s.sel=on;});
+  save();drawList();
+});
+$("delSel").addEventListener("click",function(){
+  var k=sources.filter(function(s){return s.sel;}).length;
+  if(!k) return;
+  if(!confirm("Delete "+k+" selected source"+(k>1?"s":"")+"?")) return;
+  sources=sources.filter(function(s){return !s.sel;});
+  save();drawList();
+});
+
+/* ---------- combined page ---------- */
+function selected(){
+  return sources.filter(function(s){return s.sel;})
+    .slice().sort(function(a,b){return sortKey(a).localeCompare(sortKey(b));});
+}
+function drawWorks(){
+  var list=selected(), box=$("works");
+  if(!list.length){
+    box.innerHTML='<p class="empty" style="padding:0;text-indent:0">Select sources above to build the page.</p>';
+    return;
+  }
+  box.innerHTML='<h3>'+esc($("heading").value)+'</h3>'+
+    list.map(function(s){return "<p>"+citation(s,true)+"</p>";}).join("");
+}
+$("heading").addEventListener("change",drawWorks);
+
+function worksHTML(){
+  var list=selected();
+  var p='margin:0 0 0 0;text-indent:-0.5in;padding-left:0.5in;line-height:2;';
+  return '<div style="font-family:\'Times New Roman\',Times,serif;font-size:12pt;line-height:2">'+
+    '<p style="text-align:center;margin:0;line-height:2">'+esc($("heading").value)+'</p>'+
+    list.map(function(s){return '<p style="'+p+'">'+citation(s,true)+'</p>';}).join("")+'</div>';
+}
+function worksText(){
+  return $("heading").value+"\n\n"+selected().map(function(s){return citation(s,false);}).join("\n\n");
+}
+$("copyAll").addEventListener("click",function(){
+  if(!selected().length){alert("Select at least one source.");return;}
+  copy(worksHTML(),worksText(),this);
+});
+$("copyPlain").addEventListener("click",function(){
+  if(!selected().length){alert("Select at least one source.");return;}
+  copy(null,worksText(),this);
+});
+
+/* ---------- clipboard ---------- */
+function flash(btn,msg){
+  if(!btn||btn._t) return;
+  var old=btn.textContent;btn.textContent=msg;
+  btn._t=setTimeout(function(){btn.textContent=old;btn._t=null;},1300);
+}
+function fallback(text){
+  var ta=document.createElement("textarea");
+  ta.value=text;ta.style.position="fixed";ta.style.opacity="0";
+  document.body.appendChild(ta);ta.select();
+  try{document.execCommand("copy");}catch(e){}
+  document.body.removeChild(ta);
+}
+function copy(html,text,btn){
+  var done=function(){flash(btn,"Copied!");};
+  if(html&&navigator.clipboard&&window.ClipboardItem){
+    navigator.clipboard.write([new ClipboardItem({
+      "text/html":new Blob([html],{type:"text/html"}),
+      "text/plain":new Blob([text],{type:"text/plain"})
+    })]).then(done,function(){fallback(text);done();});
+    return;
+  }
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done,function(){fallback(text);done();});
+    return;
+  }
+  fallback(text);done();
+}
+
+/* ---------- go ---------- */
+drawFields(null);
+drawList();
+</script>
+</body>
+</html>
