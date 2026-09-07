@@ -9,9 +9,11 @@ formulas from `MLA Cheat Sheet.pdf`.
 - **Blank fields are skipped**, per the cheat sheet tip ("when a source is missing one of the
   required items, skip it").
 - **Live preview** of the citation plus the matching parenthetical (in-text) citation.
-- **Source list** saved in your browser (`localStorage`) — edit or delete any entry.
+- **Source list** saved in your browser (`localStorage`) — edit or delete any entry, and
+  drag entries by the handle (or focus a handle and press the arrow keys) to reorder them.
 - **Combined page** — tick the sources you want and copy a full *Works Cited* or
-  *Works Consulted* page: alphabetized, hanging indent, double spaced.
+  *Works Consulted* page with a hanging indent and double spacing, ordered alphabetically
+  or in your own dragged order.
   "Copy formatted" preserves italics and indenting when pasted into Google Docs or Word.
 
 ## Use it

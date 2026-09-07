@@ -48,7 +48,15 @@
   .intext{margin-top:8px;font-family:system-ui,sans-serif;font-size:.82rem;color:var(--muted)}
   .intext code{font-family:ui-monospace,Menlo,Consolas,monospace;color:var(--ink)}
   ul.sources{list-style:none;margin:0;padding:0}
-  ul.sources li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line)}
+  ul.sources li{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--line);background:var(--card)}
+  ul.sources li.dragging{opacity:.65;border-radius:8px;box-shadow:0 2px 10px rgba(0,0,0,.18);border-top-color:transparent}
+  ul.sources.dragging li{border-top-color:transparent}
+  .handle{flex:none;width:24px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+          margin-top:0;padding:0;border:0;background:none;color:var(--muted);cursor:grab;
+          touch-action:none;font-size:15px;line-height:1;letter-spacing:1px}
+  .handle:hover{color:var(--accent)}
+  .handle:active{cursor:grabbing}
+  .handle:focus-visible{outline:2px solid var(--accent);border-radius:5px}
   ul.sources li:first-child{border-top:0}
   ul.sources input[type=checkbox]{width:17px;height:17px;margin-top:3px;flex:none;accent-color:var(--accent)}
   .s-body{flex:1;min-width:0}
@@ -110,12 +118,16 @@
         <option>Works Cited</option>
         <option>Works Consulted</option>
       </select>
+      <select id="order" style="width:auto" aria-label="Entry order">
+        <option value="alpha">Alphabetical</option>
+        <option value="manual">My order</option>
+      </select>
       <button id="copyAll">Copy formatted</button>
       <button id="copyPlain">Copy plain text</button>
     </div>
   </div>
   <div class="works" id="works"><p class="empty" style="padding:0;text-indent:0">Select sources above to build the page.</p></div>
-  <p class="muted" style="font-size:.8rem;margin:12px 0 0">Alphabetical, hanging indent, double spaced. "Copy formatted" keeps the italics and indenting when you paste into Docs or Word.</p>
+  <p class="muted" style="font-size:.8rem;margin:12px 0 0">Hanging indent, double spaced. Alphabetical by default &mdash; drag a source by its handle to switch to your own order. "Copy formatted" keeps the italics and indenting when you paste into Docs or Word.</p>
 </section>
 
 <footer>Formulas from the MLA Cheat Sheet. Nothing leaves your browser &mdash; sources are saved locally.</footer>
@@ -251,7 +263,7 @@ function sortKey(src){
 }
 
 /* ---------- state ---------- */
-var KEY="mla-sources-v1";
+var KEY="mla-sources-v1", OKEY="mla-order-v1";
 var sources=[];
 try{sources=JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){sources=[];}
 if(!Array.isArray(sources)) sources=[];
@@ -332,12 +344,67 @@ $("copyOne").addEventListener("click",function(){
 });
 
 /* ---------- list ---------- */
+function manualOrder(){
+  if($("order").value!=="manual"){$("order").value="manual";localStorage.setItem(OKEY,"manual");}
+  save();drawWorks();
+}
+function startDrag(e){
+  if(e.button) return;
+  var li=e.target.closest("li"), ul=$("list");
+  if(!li||sources.length<2) return;
+  e.preventDefault();
+  var handle=e.target.closest(".handle");
+  handle.setPointerCapture(e.pointerId);
+  li.classList.add("dragging");ul.classList.add("dragging");
+  function move(ev){
+    var y=ev.clientY, rows=[].slice.call(ul.children), before=null;
+    for(var i=0;i<rows.length;i++){
+      if(rows[i]===li) continue;
+      var r=rows[i].getBoundingClientRect();
+      if(y<r.top+r.height/2){before=rows[i];break;}
+    }
+    if(before!==li.nextSibling) ul.insertBefore(li,before);
+  }
+  function up(){
+    handle.removeEventListener("pointermove",move);
+    handle.removeEventListener("pointerup",up);
+    handle.removeEventListener("pointercancel",up);
+    li.classList.remove("dragging");ul.classList.remove("dragging");
+    var ids=[].slice.call(ul.children).map(function(n){return n.dataset.id;});
+    var byId={};sources.forEach(function(s){byId[s.id]=s;});
+    var next=ids.map(function(id){return byId[id];}).filter(Boolean);
+    if(next.length===sources.length){
+      var changed=next.some(function(s,i){return sources[i]!==s;});
+      sources=next;
+      if(changed) manualOrder(); else save();
+    }
+    drawList();
+  }
+  handle.addEventListener("pointermove",move);
+  handle.addEventListener("pointerup",up);
+  handle.addEventListener("pointercancel",up);
+}
 function drawList(){
   var ul=$("list");ul.innerHTML="";
   $("listEmpty").style.display=sources.length?"none":"block";
   $("count").textContent=sources.length?"("+sources.length+")":"";
   sources.forEach(function(s){
     var li=document.createElement("li");
+    li.dataset.id=s.id;
+    var grip=document.createElement("button");
+    grip.className="handle";grip.type="button";grip.innerHTML="&#8942;&#8942;";
+    grip.title="Drag to reorder";grip.setAttribute("aria-label","Reorder "+typeOf(s.type).label);
+    grip.addEventListener("pointerdown",startDrag);
+    grip.addEventListener("keydown",function(e){
+      if(e.key!=="ArrowUp"&&e.key!=="ArrowDown") return;
+      e.preventDefault();
+      var i=sources.indexOf(s), j=i+(e.key==="ArrowUp"?-1:1);
+      if(j<0||j>=sources.length) return;
+      sources.splice(j,0,sources.splice(i,1)[0]);
+      manualOrder();drawList();
+      var g=$("list").querySelector('li[data-id="'+s.id+'"] .handle');
+      if(g) g.focus();
+    });
     var cb=document.createElement("input");cb.type="checkbox";cb.checked=!!s.sel;
     cb.setAttribute("aria-label","Include in combined page");
     cb.addEventListener("change",function(){s.sel=cb.checked;save();drawWorks();syncAll();});
@@ -356,7 +423,7 @@ function drawList(){
       save();drawList();
     });
     acts.appendChild(ed);acts.appendChild(del);
-    li.appendChild(cb);li.appendChild(body);li.appendChild(acts);
+    li.appendChild(grip);li.appendChild(cb);li.appendChild(body);li.appendChild(acts);
     ul.appendChild(li);
   });
   syncAll();drawWorks();
@@ -381,9 +448,15 @@ $("delSel").addEventListener("click",function(){
 
 /* ---------- combined page ---------- */
 function selected(){
-  return sources.filter(function(s){return s.sel;})
-    .slice().sort(function(a,b){return sortKey(a).localeCompare(sortKey(b));});
+  var list=sources.filter(function(s){return s.sel;});
+  if($("order").value==="alpha")
+    list=list.slice().sort(function(a,b){return sortKey(a).localeCompare(sortKey(b));});
+  return list;
 }
+$("order").addEventListener("change",function(){
+  try{localStorage.setItem(OKEY,this.value);}catch(e){}
+  drawWorks();
+});
 function drawWorks(){
   var list=selected(), box=$("works");
   if(!list.length){
@@ -444,6 +517,7 @@ function copy(html,text,btn){
 }
 
 /* ---------- go ---------- */
+try{if(localStorage.getItem(OKEY)==="manual") $("order").value="manual";}catch(e){}
 drawFields(null);
 drawList();
 </script>
