@@ -6,6 +6,10 @@ formulas from `MLA Cheat Sheet.pdf`.
 - **Nine source types** — book (1 or 2 authors), anthology, a work within an anthology,
   print magazine/newspaper article, scholarly journal article, page on a website,
   article on a website, YouTube video.
+- **A channel is not an author.** Per the 9th edition, an author must be a person, so a
+  YouTube entry starts with the video title and names the channel after the container
+  (`"Title." *YouTube*, uploaded by Channel, date, URL.`). A human creator, if there is one,
+  still leads the entry.
 - **Blank fields are skipped**, per the cheat sheet tip ("when a source is missing one of the
   required items, skip it").
 - **Live preview** of the citation plus the matching parenthetical (in-text) citation.

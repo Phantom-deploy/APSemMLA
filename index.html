@@ -149,7 +149,7 @@ var F={
   essay:{l:"Title of essay",p:"On Being Ill",full:1},
   article:{l:"Title of article",p:"Executive on a Mission: Saving the Planet",full:1},
   video:{l:"Title of the film or video",p:"The Water Cycle Explained",full:1},
-  creator:{l:"Creator / channel name",p:"CrashCourse"},
+  channel:{l:"Channel name",p:"CrashCourse"},
   editors:{l:"Editor's name(s)",p:"André Aciman"},
   publication:{l:"Title of publication",p:"The New York Times"},
   journal:{l:"Title of journal",p:"International Journal of Sustainable Development"},
@@ -232,8 +232,9 @@ var TYPES=[
     T(v.publisher,{sep:", "}),T(v.date,{sep:", "}),T(v.url),T(v.accessed?"Accessed "+v.accessed:"")];}},
 
  {id:"youtube",label:"YouTube video",kind:"web",
-  fields:["creator","video","date","url"],
-  build:function(v){return[T(v.creator),T(v.video,{q:1}),T("YouTube",{i:1,sep:", "}),T(v.date,{sep:", "}),T(v.url)];}}
+  fields:["last","first","video","channel","date","url"],
+  build:function(v){return[T(name(v)),T(v.video,{q:1}),T("YouTube",{i:1,sep:", "}),
+    T(v.channel?"uploaded by "+v.channel:"",{sep:", "}),T(v.date,{sep:", "}),T(v.url)];}}
 ];
 function typeOf(id){for(var i=0;i<TYPES.length;i++) if(TYPES[i].id===id) return TYPES[i];return TYPES[0];}
 
@@ -246,7 +247,7 @@ function citation(src,html){
 function intext(src,num){
   var t=typeOf(src.type), v=src.values, n=num||"";
   var title=v.article||v.essay||v.video||v.bookTitle||v.collection||"";
-  var l=(v.last||"").trim()||(v.creator||"").trim();
+  var l=(v.last||"").trim();
   if(t.kind==="web") return l?"("+l+")":(title?"(“"+title+"”)":"");
   if(t.kind==="print"){var p=n?" para "+n:" para #";return l?"("+l+p+")":(title?"(“"+title+"”"+p+")":"");}
   var pg=n?" "+n:" #";
@@ -267,6 +268,9 @@ var KEY="mla-sources-v1", OKEY="mla-order-v1";
 var sources=[];
 try{sources=JSON.parse(localStorage.getItem(KEY)||"[]");}catch(e){sources=[];}
 if(!Array.isArray(sources)) sources=[];
+sources.forEach(function(s){
+  if(s&&s.values&&s.values.creator){s.values.channel=s.values.creator;delete s.values.creator;}
+});
 var editing=null;
 var $=function(id){return document.getElementById(id);};
 function save(){try{localStorage.setItem(KEY,JSON.stringify(sources));}catch(e){}}
